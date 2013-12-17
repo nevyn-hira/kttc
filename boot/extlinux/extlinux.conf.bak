@@ -1,0 +1,5 @@
+DEFAULT core
+LABEL core
+KERNEL /boot/vmlinuz
+APPEND initrd=/boot/core.gz quiet waitusb=5:UUID="2973acba-c18d-460c-9c65-e8986272abb9" tce=UUID="2973acba-c18d-460c-9c65-e8986272abb9" home=UUID="2973acba-c18d-460c-9c65-e8986272abb9" opt=UUID="2973acba-c18d-460c-9c65-e8986272abb9" multivt noswap
+

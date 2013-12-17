@@ -1,0 +1,4 @@
+#!/bin/bash
+
+serial_num="$(dmidecode -s system-serial-number | head -n1)"
+dialog --title "Serial Number" --msgbox "${serial_num}" 5 50

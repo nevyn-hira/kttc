@@ -1,0 +1,5 @@
+#!/bin/bash
+
+if [ -f "/supplementary/packages/*.deb" ] ; then
+  dpkg -i /supplementary/packages/*.deb
+fi

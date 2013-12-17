@@ -1,0 +1,55 @@
+#!/bin/bash
+
+NEWLINE="\n\n"
+PKG_DIR="/mnt/live/pkg"
+. "$PKG_DIR/variables"
+new_drives=""
+dialog --title "Making an Imaging Stick" \
+  --yesno "$( echo -e "To make an imaging stick you first need " \
+     "a usb stick that you don't mind deleting.${NEWLINE}" \
+     "To proceed, please make sure you have nothing plugged " \
+     "in except for the KttC stick.${NEWLINE}\n" \
+     "Are you sure you want to continue?" )" \
+     20 60 && \
+(
+  COUNTER=0
+  DRIVE=""
+  sleep 1
+  drives="$( ls /dev/sd? | tr ' ' '\n')"
+  while [ "$DRIVE" == "" ] && [ $COUNTER -lt 84 ] ; do
+    dialog --keep-window --title "Insert Stick Now" --infobox "$(printf "%$((${COUNTER}%42))s" "-" )" 3 50
+    sleep 1
+    new_drives="$( ls /dev/sd? )"
+    if [ "$new_drives" != "$drives" ] ; then
+      DRIVE="$(join -v 1 <( echo "${new_drives// /$'\n'}" ) <( echo "${drives// /*'\n'}" ))"
+    fi
+    COUNTER=$(( $COUNTER+1 ))
+  done
+  dialog --infobox "Drive found on ${DRIVE}.${NEWLINE}Partitioning ${DRIVE}" 3 50
+  #Remove all partitions from drive
+  for i in $( seq 1 4 ) ; do
+    parted --script ${DRIVE} rm ${i} &>/dev/null
+  done
+  killall rebuildfstab
+  echo -e "n\np\n1\n\n\na\n1\nw\n" | fdisk ${DRIVE} -H 255 -S 63 &>/dev/null
+  sleep 1
+  mkfs.ext2 ${DRIVE}1 &>/dev/null
+  [ ! -d /mnt/dest ] && mkdir /mnt/dest
+  rm -r /mnt/dest/*
+  sleep 1
+  mount ${DRIVE}1 /mnt/dest &>/dev/null
+  SOURCE_SIZE=$( du -c $KTTC_SOURCE | tail -n1 | cut -f1 )
+  cp $KTTC_SOURCE/* $DEST -r 2>/dev/null & CP_PID=$!
+  (
+    while [ -d "/proc/$CP_PID" ] ; do
+      PERCENTAGE=$( echo "scale=6 ; $( du -c $DEST | tail -n1 | cut -f1 ) / $SOURCE_SIZE * 100" | bc | cut -f1 -d "." )
+      sleep 1
+      echo -e "$PERCENTAGE\n###\n$PERCENTAGE %\n###"
+    done
+  ) | dialog --title "KttC Stick" --gauge "Copying Files" 6 50
+  dialog --title "KttC Stick" --infobox "Making New Stick Bootable" 3 50
+  extlinux --install ${DEST}/boot/extlinux &>/dev/null
+  UUID=$(lsblk -no UUID ${DRIVE}1)
+  sed "s/_UUID_/$UUID/g" ${KTTC_SOURCE}/pkg/extlinux.conf > $DEST/boot/extlinux/extlinux.conf
+  umount $DEST
+)

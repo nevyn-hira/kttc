@@ -1,0 +1,34 @@
+#!/bin/bash
+
+
+PKG_DIR=/mnt/live/pkg
+. "$PKG_DIR/variables"
+
+if [ ! -d $MOUNT_DIR ] ; then
+  mkdir $MOUNT_DIR
+fi
+if [ -z "$( mount | grep $MOUNT_DIR )" ] ; then
+  mount $ROOT_PART $MOUNT_DIR
+fi
+
+serialnum="$(dmidecode -s system-serial-number)"
+#find keys
+for file in $PSK_DIR/keys/* ; do
+  if [ ! -z "$( grep $serialnum $file )" ] ; then
+    LINE="$( grep $serialnum $file )"
+    KEY="$( echo $LINE | grep '"[^\"]*"' -o | sed 's/"//g' )"
+    DEST=$MOUNT_DIR/etc/NetworkManager/system-connections/Manaiakalani
+    if [ ! -z "$( echo $LINE | grep "Manaiakalani" -o )" ] && [ ! -f $DEST ] ; then
+      while read line ; do
+        if [ "$line" == "psk=__PSK__" ]; then
+          line="psk=$KEY"
+        fi
+        echo $line >> $DEST
+      done < $PSK_DIR/templates/Manaiakalani
+      chown root:root $DEST
+      chmod 600 $DEST
+    fi
+  fi
+done
+
+umount $MOUNT_DIR

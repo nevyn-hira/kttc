@@ -1,0 +1,13 @@
+#!/bin/bash
+
+function gen_id {
+  MODEL="$( hdparm -i /dev/sda | grep "^ Model" 2>/dev/null )"
+  SERIAL="$(echo $MODEL | cut -f 3 -d "," | cut -f 2 -d "=" \
+    | sed 's/^ *// ; s/ /_/g' )"
+  MODEL="$( echo $MODEL | cut -f 1 -d "," | cut -f 2 -d "=" \
+    | sed 's/ *$//g ; s/ /_/g' )"
+  echo "/dev/disk/by-id/ata-${MODEL}_${SERIAL}"
+}
+
+echo "set grub-pc/install_devices $(gen_id)" | debconf-communicate
+echo "set grub-pc/install_devices_failed_upgrade false" | debconf-communicate

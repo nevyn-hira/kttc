@@ -1,0 +1,31 @@
+#!/bin/bash
+
+RESPONSE="/tmp/ans$$"
+PKG_DIR="/mnt/live/pkg"
+. "$PKG_DIR/variables"
+
+while true ; do
+    clear
+    dialog --title "Keys to the Castle v2.02" --menu "" 20 50 20 \
+        "1" "Image Computer" \
+        "2" "Issue Network Keys" \
+        "3" "Reset Password" \
+        "4" "Create Sticks" \
+        "5" "Get Serial Number" \
+        "6" "Delete User's Preferences" \
+        "Q" "Quit" \
+        2>${RESPONSE}
+    ANSWER=$(<"$RESPONSE")
+    case $ANSWER in
+      "1") $PKG_DIR/image_machine ;;
+      "2") $PKG_DIR/deploy_psk ;;
+      "3") $PKG_DIR/change_password ;;
+      "4") $PKG_DIR/mk_imaging_stick ;;
+      "5") $PKG_DIR/get_serial ;;
+      "6") $PKG_DIR/delete_preferences ;;
+      "Q") dialog --infobox "Shutting down" 3 30
+           dialog --clear
+           poweroff ;;
+    esac
+    rm $RESPONSE
+done

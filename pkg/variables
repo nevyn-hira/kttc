@@ -1,0 +1,11 @@
+#!/bin/bash
+
+DEST="/mnt/dest"
+IMAGE="/mnt/live/images/manaiakalani.tar.lzop"
+KTTC_SOURCE="/mnt/live"
+MOUNT_DIR="/mnt/root"
+ROOT="/mnt/live/pkg/"
+ROOT_DEV="/dev/sda"
+ROOT_PART="${ROOT_DEV}5"
+SUPPLEMENTARY="/mnt/live/supplementary"
+PSK_DIR="/mnt/live/psk"

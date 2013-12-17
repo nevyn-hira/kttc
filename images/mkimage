@@ -1,0 +1,17 @@
+#!/bin/bash
+ROOT="/mnt/live/images"
+SOURCE="${ROOT}/source"
+
+[ -d "${SOURCE}" ] || mkdir "${SOURCE}"
+mount /dev/sda5 "$SOURCE" &>/dev/null
+[ -f "${SOURCE}/etc/udev/rules.d/70*" ] && rm "${SOURCE}/etc/udev/rules.d/70*"
+find "${SOURCE}/var/log/" -iname "*.old" -exec rm {} \;
+find "${SOURCE}/var/log/" -iname "*[0-9].gz" -exec rm {} \;
+rm "${SOURCE}/var/cache/apt/archives/*"
+rm "${SOURCE}/var/cache/apt/archives/*.deb" &>/dev/null
+rm "${SOURCE}/var/cache/apt/archives/partial/*" &>/dev/null
+cd "${SOURCE}"
+echo "Check point: Press enter to continue (look for any errors)"
+read -n1
+tar -cvf ${ROOT}/new_image.tar.lzop * -a
+umount $SOURCE

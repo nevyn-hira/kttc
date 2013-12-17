@@ -1,0 +1,82 @@
+#!/bin/bash
+
+PKG_DIR="/mnt/live/pkg"
+. "$PKG_DIR/variables"
+
+dialog --infobox "Making Partition Table" 3 30
+parted --script ${ROOT_DEV} rm 1 &>/dev/null
+parted --script ${ROOT_DEV} rm 2 &>/dev/null
+parted --script ${ROOT_DEV} rm 3 &>/dev/null
+parted --script ${ROOT_DEV} rm 4 &>/dev/null
+blockdev --rereadpt ${ROOT_DEV}
+echo -e "n\np\n1\n\n+2G\nt\n82\nn\ne\n\n\n\nn\nl\n\n\nt\n5\n83\nw\n" | fdisk $ROOT_DEV &>/dev/null
+dialog --infobox "Formatting Drives" 3 30
+while [ ! -b ${ROOT_DEV}5 ] ; do
+  sleep 1
+done
+while [ ! -b ${ROOT_DEV}1 ] ; do
+  sleep 1
+done
+
+mkfs.ext4 ${ROOT_DEV}5
+mkswap ${ROOT_DEV}1
+
+if [ ! -d "${MOUNT_DIR}" ] ; then
+  mkdir "${MOUNT_DIR}"
+fi
+mount "${ROOT_DEV}5" "${MOUNT_DIR}" &>/dev/null
+( pv -n "$IMAGE" | tar xf - -C "$MOUNT_DIR" ) 2>&1 | dialog --gauge "Extracting Image..." 6 50
+
+dialog --infobox "Configuring System" 3 30
+
+while [ -z "$( lsblk -no UUID /dev/sda5)" ] ; do
+  sleep 1
+done
+while [ -z "$( lsblk -no UUID /dev/sda1)" ] ; do
+  sleep 1
+done
+
+UUID_SDA5="$( lsblk -no UUID /dev/sda5 )"
+UUID_SDA1="$( lsblk -no UUID /dev/sda1 )"
+
+if [ $? -ne 0 ] ; then
+  UUID_SDA1="/dev/sda1"
+  echo "Error in finding uuid for sda1. Press any key to continue."
+  read -n1
+fi
+
+if [ -z "$UUID_SDA5" ] || [ -z "$UUID_SDA1" ] ; then
+  echo "ERROR"
+  exit 1
+fi
+
+sed "s/sda5/UUID=$UUID_SDA5/ ; s/sda1/UUID=$UUID_SDA1/" ${PKG_DIR}/fstab > ${MOUNT_DIR}/etc/fstab
+mount -o bind /proc ${MOUNT_DIR}/proc
+mount -o bind /sys ${MOUNT_DIR}/sys
+mount -o bind /dev ${MOUNT_DIR}/dev
+chroot ${MOUNT_DIR} update-grub2
+chroot ${MOUNT_DIR} grub-install /dev/sda
+
+dialog --infobox "Applying any supplementary packages and scripts" 3 30
+mkdir ${MOUNT_DIR}/supplementary
+mount -o bind ${SUPPLEMENTARY} ${MOUNT_DIR}/supplementary
+for file in "${SUPPLEMENTARY}/in-environment-scripts/"* ; do
+  chroot ${MOUNT_DIR} bash -c "/supplementary/in-environment-scripts/$(basename $file)"
+done
+
+#chroot ${MOUNT_DIR} bash -c "/supplementary/in-environment-scripts/"*
+umount ${MOUNT_DIR}/supplementary
+rmdir ${MOUNT_DIR}/supplementary
+
+$SUPPLEMENTARY/post-inst-scripts/*
+
+sync
+umount -l ${MOUNT_DIR}/proc
+umount -l ${MOUNT_DIR}/sys
+umount -l ${MOUNT_DIR}/dev
+umount -l ${MOUNT_DIR}
+
+dialog --infobox "Shutting down system" 3 30
+sleep 1
+clear
+poweroff

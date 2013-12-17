@@ -1,0 +1,24 @@
+#!/bin/bash
+
+PKG_DIR="/mnt/live/pkg"
+RESPONSE="/dev/tmp$$"
+. "$PKG_DIR/variables"
+
+[ ! -d "$MOUNT_DIR" ] && mkdir "$MOUNT_DIR"
+[ -z "$( mount | grep "$MOUNT_DIR" | grep "$ROOT_PART" )" ] && mount "$ROOT_PART" "$MOUNT_DIR"
+#get user names
+while read line ; do
+  USER_ID="$( echo $line | cut -f 3 -d ':' )"
+  if [ $USER_ID -ge 1000 ] && [ $USER_ID -ne 65534 ] ; then
+    USERS="$( echo $line | cut -f 1 -d ':' ) $USERS"
+  fi
+done < "$MOUNT_DIR/etc/passwd"
+USERS="${USERS%?}"
+for user in $USERS ; do
+  COUNTER=$(( $COUNTER+1 ))
+  USER_LIST=("${USER_LIST[@]}" "$COUNTER")
+  USER_LIST=("${USER_LIST[@]}" "$user")
+done
+dialog --title "$1" --menu "select options" 15 80 13 ${USER_LIST[@]} 2>$RESPONSE
+USER=${USER_LIST[ $(( $( <$RESPONSE )*2-1 )) ]}
+echo $USER 1>&2

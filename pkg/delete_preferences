@@ -1,0 +1,25 @@
+#!/bin/bash
+PKG_DIR="/mnt/live/pkg"
+RESPONSE="/tmp/response$$"
+. "$PKG_DIR/variables"
+
+function delete {
+    [ -e "$1" ] && rm -r "$1"
+}
+
+$PKG_DIR/get_user "Which user's preferences would you like to delete?" 2>$RESPONSE
+USER=$(<$RESPONSE)
+HOME_DIR="$MOUNT_DIR/home/$USER"
+[ ! -d $MOUNT_DIR ] && mkdir $MOUNT_DIR
+[ -z "$( mount | grep "$MOUNT_DIR" | grep "$ROOT_DEV" )" ] && \
+    mount "$ROOT_DEV" "$MOUNT_DIR"
+delete "$HOME_DIR/.gconf"
+delete "$HOME_DIR/.config/dconf"
+delete "$HOME_DIR/.local/share/gsettings-data-convert"
+delete "$HOME_DIR/.local/share/zeitgeist"
+dialog --infobox "Preferences for $USER deleted.\n\nPress a key to continue." 7 30
+read -n1
+[ -z "$( mount | grep "$MOUNT_DIR" | grep "$ROOT_DEV" )" ] && \
+    umount "$MOUNT_DIR"
+[ -d $MOUNT_DIR ] && rmdir $MOUNT_DIR
+rm $RESPONSE
